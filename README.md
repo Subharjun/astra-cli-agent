@@ -2,8 +2,8 @@
 
 **A terminal AI assistant that understands natural language and drives your developer
 tools** — git, docker, kubernetes, filesystem, code, shell, web research, and MCP plugins
-— through a multi-agent pipeline with local memory, retrieval-augmented context, and
-multi-provider LLM fallback.
+— through a multi-agent LangGraph pipeline with local memory, RAG, and multi-provider LLM
+fallback.
 
 ```
 $ astra "what's the git status here, and run the linter"
@@ -21,31 +21,32 @@ agent(s) and breaks the request into steps, worker agents execute them against r
 a reviewer agent checks the output and can loop back for a revision — not a single prompt
 wrapping a shell call.
 
-| Domain | Capabilities |
-|---|---|
-| Git | status, diff, log, blame, branch, commit (auto-generated messages), push, merge, checkout, stash |
-| Filesystem & code | read/write/move/delete files, lint & format, run tests, symbol search |
-| Shell | runs commands behind a hard denylist + confirmation gate |
-| Docker | ps, images, build, run, logs, exec, inspect, rm/rmi, prune |
-| Kubernetes | get/describe pods/deployments/services/nodes; apply, scale, rollout restart, delete, exec |
-| Web research | GitHub repo/issue search, Stack Overflow search, general web search, fetch-with-citation |
-| Debugging | root-causes errors and stack traces, proposes concrete fixes |
-| Documentation | writes docstrings, README sections, usage guides |
-| MCP | connects to any configured MCP server (stdio, HTTP, or SSE) and calls its tools |
+| Domain | Agent | Capabilities |
+|---|---|---|
+| Git | `GitAgent` | status, diff, log, blame, branch, commit (auto-generates messages), push, merge, checkout, stash |
+| Filesystem & code | `FileAgent` | read/write/move/delete files, lint & format (`ruff`), run tests (`pytest`), symbol search |
+| Shell | `FileAgent` | runs arbitrary commands behind a hard denylist + confirmation gate |
+| Docker | `DockerAgent` | ps, images, build, run, logs, exec, inspect, rm/rmi, prune |
+| Kubernetes | `KubernetesAgent` | get/describe pods, deployments, services, nodes; apply, scale, rollout restart, delete, exec |
+| Web research | `ResearchAgent` | GitHub repo/issue search, Stack Overflow search, general web search, fetch-with-citation |
+| Debugging | `DebugAgent` | root-causes errors and stack traces, proposes concrete fixes |
+| Documentation | `DocumentationAgent` | writes docstrings, README sections, usage guides |
+| MCP | `MCPAgent` | connects to any configured MCP server (stdio, HTTP, or SSE) and discovers/calls its tools |
 
 Also included:
 
 - **Safety by default** — risky operations (`git push`, file delete, shell, container/exec
   commands) require interactive confirmation unless you pass `--yes`; a shell denylist
-  blocks obviously destructive commands regardless of confirmation.
-- **Local memory + retrieval** — `astra ingest .` indexes a codebase; relevant context is
-  pulled into requests automatically afterward.
-- **Multi-provider LLM fallback** — tries each configured provider in order, falls through
-  on failure.
+  blocks obviously destructive commands (`rm -rf /`, fork bombs, `curl | sh`, etc.)
+  regardless of confirmation.
+- **Local memory + RAG** — `astra ingest .` indexes a codebase (SQLite + FAISS); relevant
+  chunks are pulled into the planner's context automatically on later requests.
+- **Multi-provider LLM fallback** — Groq → Anthropic → OpenAI → local Ollama, tries each in
+  order and falls through on failure.
 - **`astra chat`** — an interactive REPL with real token-level streaming, tab-completion,
   and persistent history.
 - **Cost/token tracking** — `astra memory costs` shows a real per-provider/per-model
-  spend breakdown.
+  breakdown and daily spend trend, no external service required.
 - **First-run onboarding** — `astra setup` walks you through picking a provider and tests
   your key with a real request before saving it.
 
@@ -56,7 +57,7 @@ pip install astra-cli-agent
 ```
 
 or with [uv](https://docs.astral.sh/uv/) / [pipx](https://pipx.pypa.io/) (recommended —
-isolated environment, still puts `astra` on your PATH):
+installs it in an isolated environment while still putting `astra` on your PATH):
 
 ```bash
 uv tool install astra-cli-agent
@@ -65,7 +66,8 @@ pipx install astra-cli-agent
 ```
 
 This installs the `astra` command — the PyPI distribution name (`astra-cli-agent`) is
-different from the command you actually run.
+different from the command you actually run, since `astra-cli` was already taken by an
+unrelated project.
 
 Requires Python 3.12+.
 
@@ -84,7 +86,7 @@ never committed). Don't have a key yet? [Groq's free tier](https://console.groq.
 is the fastest way to try Astra.
 
 If you skip this step, the first command that actually needs an LLM (`ask`, a bare prompt,
-or `chat`) offers to run the wizard for you automatically.
+or `chat`) will offer to run the wizard for you automatically.
 
 Then just talk to it — **from inside whatever project directory you want it to act on**,
 since every tool call is scoped to your current working directory:
@@ -92,7 +94,7 @@ since every tool call is scoped to your current working directory:
 ```bash
 astra hello                                   # sanity check: install, config, provider status
 astra ask "what's 12 * 8"                     # one-shot LLM call, no agent pipeline
-astra "what's the git status here"            # routes to the git tools
+astra "what's the git status here"            # routes to GitAgent
 astra "create a file called notes.md with a todo list"
 astra "run the linter on this project"
 astra ingest .                                # index this codebase for retrieval

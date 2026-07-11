@@ -33,6 +33,26 @@ wrapping a shell call.
 | Documentation | `DocumentationAgent` | writes docstrings, README sections, usage guides |
 | MCP | `MCPAgent` | connects to any configured MCP server (stdio, HTTP, or SSE) and discovers/calls its tools |
 
+**Example prompts by domain** — every one of these routes automatically, no flags needed
+beyond `--yes` for anything risky:
+
+| Domain | Example prompt |
+|---|---|
+| Git | `astra "what's the git status here, and diff the uncommitted changes"` |
+| Git | `astra "commit my staged changes with a good message" --yes` |
+| Filesystem & code | `astra "create a file called notes.md with a todo list"` |
+| Filesystem & code | `astra "run the linter and the test suite on this project"` |
+| Shell | `astra "run df -h and tell me how much disk space is free" --yes` |
+| Docker | `astra "list all running docker containers"` |
+| Docker | `astra "build a docker image from the Dockerfile in this directory" --yes` |
+| Kubernetes | `astra "list the pods in the default namespace"` |
+| Kubernetes | `astra "scale the api deployment to 3 replicas" --yes` |
+| Web research | `astra "search stack overflow for how to fix a detached HEAD in git"` |
+| Web research | `astra "find github repos for a python rate limiter library"` |
+| Debugging | `astra "here's a stack trace, find the root cause and propose a fix: <paste>"` |
+| Documentation | `astra "write a README section documenting the config file format"` |
+| MCP | `astra "list the tools available from my configured MCP servers"` |
+
 Also included:
 
 - **Safety by default** — risky operations (`git push`, file delete, shell, container/exec
@@ -141,6 +161,34 @@ mcp:
 ```
 
 `astra mcp tools` lists everything discovered from your configured servers.
+
+## All commands
+
+Beyond natural-language prompts, every subcommand below is a direct, non-LLM entrypoint:
+
+```bash
+astra hello                       # install/config/provider sanity check
+astra version                     # print the installed version
+astra setup                       # interactive provider onboarding wizard
+astra ask "<prompt>"              # one-shot LLM call, bypasses the agent pipeline
+astra chat                        # interactive REPL with streaming + history
+astra ingest [path]               # index a codebase for retrieval (defaults to .)
+
+astra memory history [-n N]       # recent conversation history
+astra memory clear                # wipe conversation history
+astra memory costs                # per-provider/per-model cost & token breakdown
+astra memory projects             # list ingested (RAG-indexed) projects
+astra memory search "<query>"     # test retrieval directly against an ingested project
+astra memory prefs set <k> <v>    # store a preference
+astra memory prefs get <k>        # read a preference
+astra memory prefs list           # list all preferences
+
+astra mcp servers                 # list configured MCP servers
+astra mcp tools                   # list tools discovered from configured MCP servers
+```
+
+Any bare prompt (`astra "..."`) or `astra run "<prompt>"` triggers the full
+router→planner→execute→reviewer→memory pipeline described above.
 
 ## License
 

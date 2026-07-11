@@ -23,7 +23,7 @@ wrapping a shell call.
 
 | Domain | Agent | Capabilities |
 |---|---|---|
-| Git | `GitAgent` | status, diff, log, blame, branch, commit (auto-generates messages), push, merge, checkout, stash |
+| Git | `GitAgent` | status, diff, log, blame, branch, commit (auto-generates messages), push, merge, checkout, stash, plus GitHub API: create/delete repos, issues, pull requests (needs `GITHUB_TOKEN`) |
 | Filesystem & code | `FileAgent` | read/write/move/delete files, lint & format (`ruff`), run tests (`pytest`), symbol search |
 | Shell | `FileAgent` | runs arbitrary commands behind a hard denylist + confirmation gate |
 | Docker | `DockerAgent` | ps, images, build, run, logs, exec, inspect, rm/rmi, prune |
@@ -40,6 +40,7 @@ beyond `--yes` for anything risky:
 |---|---|
 | Git | `astra "what's the git status here, and diff the uncommitted changes"` |
 | Git | `astra "commit my staged changes with a good message" --yes` |
+| Git | `astra "list the open issues on this github repo"` (needs `GITHUB_TOKEN`) |
 | Filesystem & code | `astra "create a file called notes.md with a todo list"` |
 | Filesystem & code | `astra "run the linter and the test suite on this project"` |
 | Shell | `astra "run df -h and tell me how much disk space is free" --yes` |
@@ -68,7 +69,9 @@ Also included:
 - **Cost/token tracking** — `astra memory costs` shows a real per-provider/per-model
   breakdown and daily spend trend, no external service required.
 - **First-run onboarding** — `astra setup` walks you through picking a provider and tests
-  your key with a real request before saving it.
+  your key with a real request before saving it. Optionally continues into GitHub API
+  (`GITHUB_TOKEN`) and general web search (`SERPAPI_KEY`) setup, same real-tested-before-saved
+  flow.
 
 ## Install
 
@@ -107,6 +110,11 @@ is the fastest way to try Astra.
 
 If you skip this step, the first command that actually needs an LLM (`ask`, a bare prompt,
 or `chat`) will offer to run the wizard for you automatically.
+
+The wizard then offers an optional second stage for feature-unlocking keys — a GitHub
+personal access token (`GITHUB_TOKEN`, for the `github_*` tools) and a SerpApi key
+(`SERPAPI_KEY`, for general web search) — same real-request-before-saving flow, skippable,
+default no. Run `astra setup` again any time to add these later.
 
 Then just talk to it — **from inside whatever project directory you want it to act on**,
 since every tool call is scoped to your current working directory:
@@ -169,7 +177,7 @@ Beyond natural-language prompts, every subcommand below is a direct, non-LLM ent
 ```bash
 astra hello                       # install/config/provider sanity check
 astra version                     # print the installed version
-astra setup                       # interactive provider onboarding wizard
+astra setup                       # interactive onboarding wizard (LLM provider + optional integrations)
 astra ask "<prompt>"              # one-shot LLM call, bypasses the agent pipeline
 astra chat                        # interactive REPL with streaming + history
 astra ingest [path]               # index a codebase for retrieval (defaults to .)
